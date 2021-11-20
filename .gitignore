@@ -2,3 +2,4 @@
 .idea
 service-account.json
 node_modules
+build

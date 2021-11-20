@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "nodemon Commander.js --inspect",
-    "build": "pkg Commander.js"
+    "build": "pkg -t node14-win,node14-linux --out-path build Commander.js"
   },
   "dependencies": {
     "firebase": "^9.4.1",
