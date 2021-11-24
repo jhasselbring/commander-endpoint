@@ -80,10 +80,12 @@ const executeLinux = data => {
     let pwd = false;
     if (data.command.includes('cd ') || data.command.includes('pwd')) {
         pwd = true;
-        order = order + `&& pwd`
+        order = order + ` && pwd`
     }
+    console.warn('Command: ' + order);
     exec(order, { maxBuffer: 1024 * 3000, encoding: "UTF-8" }, (error, response, stderr) => {
         if (error) {
+            console.warn('Win32-error: ' + stderr);
             commands.doc(ID).update({
                 lastResponseTime: getNowSeconds(),
                 response: {
@@ -92,6 +94,7 @@ const executeLinux = data => {
                 }
             })
         } else {
+            console.warn('Linux-response: ' + response);
             let responsePayload = {
                 success: true,
                 message: response
@@ -100,7 +103,10 @@ const executeLinux = data => {
                 responsePayload.pwd = response.trim();
                 responsePayload.message = '';
             }
-            commands.doc(ID).update({ lastResponseTime: Math.floor(new Date().getTime() / 1000), response: responsePayload })
+            commands.doc(ID).update({
+                lastResponseTime: Math.floor(new Date().getTime() / 1000),
+                response: responsePayload
+            })
         }
     })
 
@@ -110,10 +116,12 @@ const executeWin32 = data => {
     let pwd = false;
     if (data.command.includes('cd ') || data.command.includes('pwd')) {
         pwd = true;
-        order = order + `&& echo %cd%`
+        order = order + ` & (echo|cd)`
     }
+    console.warn('Command: ' + order);
     exec(order, { maxBuffer: 1024 * 3000, encoding: "UTF-8" }, (error, response, stderr) => {
         if (error) {
+            console.warn('Win32-error: ' + stderr);
             commands.doc(ID).update({
                 lastResponseTime: getNowSeconds(),
                 response: {
@@ -122,6 +130,7 @@ const executeWin32 = data => {
                 }
             })
         } else {
+            console.warn('Win32-response: ' + response);
             let responsePayload = {
                 success: true,
                 message: response
@@ -130,7 +139,10 @@ const executeWin32 = data => {
                 responsePayload.pwd = response.trim();
                 responsePayload.message = '';
             }
-            commands.doc(ID).update({ lastResponseTime: Math.floor(new Date().getTime() / 1000), response: responsePayload })
+            commands.doc(ID).update({
+                lastResponseTime: Math.floor(new Date().getTime() / 1000),
+                response: responsePayload
+            })
         }
     })
 
